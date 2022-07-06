@@ -1,9 +1,7 @@
 ###################################################################################
 ###################################################################################
-# 30nov 2021
-
-# GLMM analysis
-
+# Roux-Sibilon, Peyrin, Greenwood, and Goffaux
+# Radial bias in face identification
 ###################################################################################
 ###################################################################################
 packages = c("tidyverse",
@@ -17,7 +15,7 @@ packages = c("tidyverse",
              "modelbased",
              "ggeffects")
 
-## Now load or install&load all
+## Load or install&load all
 package.check <- lapply(
   packages,
   FUN = function(x) {
@@ -78,13 +76,12 @@ alxtheme <- theme_bw() +
 
 
 
-# ages XP up-left
+# ages group up-left
 ages <- c(24,25,20,20,19,20,19,22,19,20,24,23,23,22,21,21,23,23,22,20)
 meanage <- mean(ages)
 sdage <- sd(ages)
 
 # 1 -- Prepare data ----------------------------------------------------------------------------------------------------
-
 
 # Import data (from excel files created by E-merge / E-Prime)
 
@@ -362,58 +359,6 @@ ggplot(
 
 
 
-# Groups separated, Inversion effect
-averagesIEs <- df %>%
-  group_by(subjGroup, Subject, meridian, inversion, phase) %>%
-  dplyr::summarise(
-    accuracy = mean(accuracy) # first summarize across trial (1 value per subj*condition)
-  ) %>% 
-  dcast(Subject + subjGroup + meridian + phase ~ inversion, value.var = "accuracy") %>% 
-  mutate(IE = upright - inverted) %>% 
-  select(-upright,
-         -inverted) %>% 
-  Rmisc::summarySE( # then compute CI etc.
-    measurevar = "IE",
-    groupvars = c("subjGroup", "meridian", "phase"))
-averagesIEs$meridian <- as.factor(averagesIEs$meridian)
-
-
-ggplot(
-  averagesIEs,
-  aes(
-    x = phase,
-    y = IE,
-    color = meridian, 
-    fill = meridian
-  )
-) +
-  # stat_smooth(se = FALSE, geom = "area",
-  #             method = 'loess', alpha = .5,
-  #             position = position_dodge(width = 0.5)) +
-  geom_smooth (size = 2, position = position_dodge(width = 0.5),
-               se = FALSE) +
-  geom_point (size = 4, position = position_dodge(width = 0.5), alpha = 0.5)  +
-  geom_errorbar(aes(ymin = IE - se,
-                    ymax = IE + se),
-                width = 0,
-                size = 1.2, 
-                position = position_dodge(width = 0.5), 
-                alpha = 0.5) +
-    labs (y = "Accuracy", x = "Phase coherence") +
-  scale_color_manual (values = c("antiquewhite1", "cornflowerblue", "coral3")) +
-  scale_fill_manual (values = c("antiquewhite1", "cornflowerblue", "coral3")) +
-  scale_x_continuous (expand = c(0, 0)) +
-  facet_grid(.~subjGroup)  +
-  alxtheme +
-  theme (
-    axis.ticks.x = element_blank(),
-    text = element_text(size = 20),
-    axis.text = element_text(size = 15)
-  )
-
-
-
-
 # 3 -- Fit hierarchical GLMM models ----------------------------------------------------------------------------------------
 
 # Full model, LOWRIGHT
@@ -465,7 +410,7 @@ for (thisGroup in twogroups) {
 
 # Critical interaction
 
-# .... for each groups
+# .... for each group
 for (thisGroup in twogroups) {
   
   # fit radial interaction model
@@ -912,83 +857,3 @@ LOWRIGHT_pars_ranef <- coef(LOWRIGHT_radialInter)$Subject %>%
     radialeffectsize = abs(wslope.horiz) - abs(wslope.vert))
 
 
-
-
-# plot slopes ---------------------------------------------------------------------------------------------------------
-
-bgdat = data.frame( #for background color of the plot
-  x = c(0, 0.3),
-  xmin = 0,
-  xmax = 0.3,
-  y = c(0, 0.3)
-)
-
-
-
-pars_ranef <- bind_rows(UPLEFT_pars_ranef, LOWRIGHT_pars_ranef)
-
-xlabz <- expression(paste(Horizontal~Meridian:~β[upright]~-~β[inverted]))
-ylabz <- expression(paste(Vertical~Meridian:~β[upright]~-~β[inverted]))
-
-
-
-ggplot(bgdat) +
-  geom_ribbon(aes(xmin = x, xmax = xmax, y = y), fill = "grey90") +
-  geom_ribbon(aes(xmin = xmin, xmax = x, y = y), fill = "grey70") +
-  geom_point(
-    data = pars_ranef,
-    inherit.aes = FALSE,
-    aes(x = wslope.horiz, 
-        y = wslope.vert, 
-        size = 4,
-        color = group),
-    # shape = 1,
-    stroke = 1
-    ) +
-  # geom_text(
-  #   data = pars_ranef,
-  #   inherit.aes = FALSE,
-  #   aes(x = wslope.horiz, 
-  #       y = wslope.vert, 
-  #       label = Subject)
-  # ) +
-  scale_color_manual (values = colorsall, name = "") +
-  scale_x_continuous(limits = c(0, 0.3), 
-                     expand = c(0, 0),
-                     breaks = seq(0,0.3,0.1),
-                     name = xlabz) +
-  scale_y_continuous(limits = c(0, 0.3), 
-                     expand = c(0, 0),
-                     breaks = seq(0,0.3,0.1),
-                     name = ylabz) +
-  # scale_size(range = c(1, 8)) +
-  geom_text(x = 0.2, y = 0.1, 
-            label = "FIE radial > FIE tangential", 
-            angle = 45,
-            fontface = "bold",
-            size = 8,
-            alpha = .1) +
-  geom_text(x = 0.1, y = 0.2, 
-            label = "FIE tangential > FIE radial", 
-            angle = 45,
-            fontface = "bold",
-            size = 8,
-            alpha = .1) +
-  alxtheme +
-  theme(legend.position = "none")
-# +
-#   geom_segment(
-#     data = pars_ranef,
-#     inherit.aes = FALSE,
-#     aes(x = wslope.horiz, 
-#         y = wslope.vert, 
-#         size = 4,
-#         color = group),  
-#     # shape = 1,
-#     stroke = 1
-#   )+
-#   geom_segment(aes(x = x - w, xend = x + w)) +
-#   geom_segment(aes(y = y - w, yend = y + w))
-# 
-#   geom_segment(aes(xend = damMean, yend = fitted, color = "resid")) +
-  
